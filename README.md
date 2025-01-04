@@ -107,8 +107,8 @@ deepcast version
 src/
 ├── models/         # Data models (Podcast)
 ├── services/       # Core services (LLM, TTS, File)
-├── utils/         # Utility functions (Config)
-└── cli.py         # CLI interface
+├── utils/          # Utility functions (Config)
+└── cli.py          # CLI interface
 ```
 
 ## 🔧 Configuration
