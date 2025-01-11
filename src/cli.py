@@ -14,8 +14,12 @@ from .models.config import (
     PodcastConfig, PodcastStyle, ComplexityLevel, 
     Language, STYLE_DESCRIPTIONS
 )
+from .models.audio_config import (
+    AudioConfig, SpeakerConfig, BackgroundMusicType,
+    VoiceEmotion, MUSIC_URLS
+)
 from .services.llm_service import LLMService
-from .services.tts_service import TTSService
+from .services.audio_service import AudioService
 from .services.file_service import FileService
 from .services.content_service import ContentService
 from .utils import config
@@ -43,6 +47,28 @@ def show_styles():
     
     for style in PodcastStyle:
         table.add_row(style.value, STYLE_DESCRIPTIONS[style])
+    
+    console.print(table)
+
+def show_music():
+    """Display available background music types."""
+    table = Table(title="Available Background Music")
+    table.add_column("Type", style="cyan")
+    table.add_column("Preview URL", style="blue")
+    
+    for music_type in BackgroundMusicType:
+        if music_type != BackgroundMusicType.NONE:
+            table.add_row(music_type.value, MUSIC_URLS[music_type])
+    
+    console.print(table)
+
+def show_emotions():
+    """Display available voice emotions."""
+    table = Table(title="Available Voice Emotions")
+    table.add_column("Emotion", style="cyan")
+    
+    for emotion in VoiceEmotion:
+        table.add_row(emotion.value)
     
     console.print(table)
 
@@ -90,6 +116,16 @@ def styles():
     show_styles()
 
 @app.command()
+def music():
+    """List available background music types."""
+    show_music()
+
+@app.command()
+def emotions():
+    """List available voice emotions."""
+    show_emotions()
+
+@app.command()
 def generate(
     topic: str = typer.Argument(..., help="Topic for the podcast discussion"),
     files: Optional[List[str]] = typer.Option(None, "--file", "-f", help="Generate podcast from files (txt, pdf, docx, epub, md, html)"),
@@ -101,6 +137,12 @@ def generate(
     complexity: ComplexityLevel = typer.Option(ComplexityLevel.INTERMEDIATE, "--complexity", "-c", help="Content complexity"),
     language: Language = typer.Option(Language.ENGLISH, "--language", "-l", help="Conversation language"),
     exchanges: int = typer.Option(5, "--exchanges", "-e", help="Number of conversation exchanges (3-10)"),
+    background_music: BackgroundMusicType = typer.Option(BackgroundMusicType.NONE, "--music", "-m", help="Background music type"),
+    music_volume: float = typer.Option(0.1, "--volume", "-v", help="Background music volume (0.0-1.0)"),
+    speaker1_emotion: VoiceEmotion = typer.Option(VoiceEmotion.PROFESSIONAL, "--speaker1-emotion", help="First speaker's emotion"),
+    speaker2_emotion: VoiceEmotion = typer.Option(VoiceEmotion.FRIENDLY, "--speaker2-emotion", help="Second speaker's emotion"),
+    save_audio: bool = typer.Option(False, "--save-audio", help="Save audio file locally"),
+    audio_format: str = typer.Option("mp3", "--format", help="Audio output format (mp3, wav, ogg)"),
 ):
     """Generate a podcast-style conversation with audio."""
     try:
@@ -122,6 +164,28 @@ def generate(
         except ValueError as e:
             console.print(f"[red]Configuration error: {str(e)}[/red]")
             raise typer.Exit(1)
+
+        # Create audio config
+        audio_config = AudioConfig(
+            speakers={
+                "speaker1": SpeakerConfig(
+                    voice="Jennifer (English (US)/American)",
+                    emotion=speaker1_emotion,
+                    turn_prefix="Speaker 1: ",
+                    fallback_voice="Rachel (English (US)/American)"
+                ),
+                "speaker2": SpeakerConfig(
+                    voice="Dexter (English (US)/American)",
+                    emotion=speaker2_emotion,
+                    turn_prefix="Speaker 2: ",
+                    fallback_voice="Patrick (English (US)/American)"
+                )
+            },
+            background_music=background_music,
+            music_volume=music_volume,
+            save_locally=save_audio,
+            output_format=audio_format
+        )
 
         # Process all inputs
         topic, content = process_input(topic, files, url, youtube)
@@ -147,13 +211,15 @@ def generate(
 
         # Generate audio
         with console.status("[bold green]Converting to audio..."):
-            audio_url = TTSService.generate_audio(transcript)
+            audio_url = AudioService.generate_audio(transcript, audio_config)
             if audio_url:
                 podcast.audio_url = audio_url
 
         if podcast.has_audio:
             console.print(f"\n[bold green]🎧 Audio generated successfully![/bold green]")
             console.print(f"[blue]Audio URL:[/blue] {audio_url}")
+            if save_audio:
+                console.print("[green]Audio file saved in the output directory[/green]")
         else:
             console.print("\n[red]Failed to generate audio[/red]")
 
