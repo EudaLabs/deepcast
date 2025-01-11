@@ -22,6 +22,7 @@ class BackgroundMusicType(str, Enum):
     NATURE = "nature"
     CINEMATIC = "cinematic"
 
+# Validate music URLs
 MUSIC_URLS = {
     BackgroundMusicType.SOFT_PIANO: "https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3",
     BackgroundMusicType.AMBIENT: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8395646.mp3",
@@ -31,6 +32,7 @@ MUSIC_URLS = {
     BackgroundMusicType.CINEMATIC: "https://cdn.pixabay.com/download/audio/2022/05/17/audio_69a61cd6d9.mp3"
 }
 
+# Validate emotion modifiers
 EMOTION_MODIFIERS = {
     VoiceEmotion.NEUTRAL: {"stability": 0.5, "similarity_boost": 0.5},
     VoiceEmotion.HAPPY: {"stability": 0.7, "similarity_boost": 0.6},
@@ -41,6 +43,14 @@ EMOTION_MODIFIERS = {
     VoiceEmotion.CALM: {"stability": 0.3, "similarity_boost": 0.3}
 }
 
+# Validate voice options
+AVAILABLE_VOICES = {
+    "Jennifer (English (US)/American)",
+    "Rachel (English (US)/American)",
+    "Dexter (English (US)/American)",
+    "Patrick (English (US)/American)"
+}
+
 @dataclass
 class SpeakerConfig:
     """Configuration for a single speaker."""
@@ -48,6 +58,24 @@ class SpeakerConfig:
     emotion: VoiceEmotion = VoiceEmotion.NEUTRAL
     turn_prefix: str = ""
     fallback_voice: Optional[str] = None
+
+    def __post_init__(self):
+        """Validate speaker configuration."""
+        if not isinstance(self.voice, str) or not self.voice.strip():
+            raise ValueError("Voice must be a non-empty string")
+        
+        if not isinstance(self.emotion, VoiceEmotion):
+            try:
+                self.emotion = VoiceEmotion(self.emotion)
+            except ValueError:
+                raise ValueError(f"Invalid emotion: {self.emotion}")
+        
+        if not isinstance(self.turn_prefix, str):
+            raise ValueError("Turn prefix must be a string")
+            
+        if self.fallback_voice is not None:
+            if not isinstance(self.fallback_voice, str) or not self.fallback_voice.strip():
+                raise ValueError("Fallback voice must be a non-empty string")
 
 @dataclass
 class AudioConfig:
@@ -60,7 +88,37 @@ class AudioConfig:
     
     def __post_init__(self):
         """Validate configuration."""
+        # Validate speakers
+        if not isinstance(self.speakers, dict):
+            raise ValueError("Speakers must be a dictionary")
+        if not self.speakers:
+            raise ValueError("At least one speaker must be configured")
+        for speaker_id, config in self.speakers.items():
+            if not isinstance(speaker_id, str) or not speaker_id.strip():
+                raise ValueError("Speaker ID must be a non-empty string")
+            if not isinstance(config, SpeakerConfig):
+                raise ValueError(f"Invalid speaker configuration for {speaker_id}")
+        
+        # Validate background music
+        if not isinstance(self.background_music, BackgroundMusicType):
+            try:
+                self.background_music = BackgroundMusicType(self.background_music)
+            except ValueError:
+                raise ValueError(f"Invalid background music type: {self.background_music}")
+        
+        # Validate music volume
+        if not isinstance(self.music_volume, (int, float)):
+            raise ValueError("Music volume must be a number")
         if not 0.0 <= self.music_volume <= 1.0:
             raise ValueError("Music volume must be between 0.0 and 1.0")
-        if not self.speakers:
-            raise ValueError("At least one speaker must be configured") 
+        
+        # Validate save_locally
+        if not isinstance(self.save_locally, bool):
+            raise ValueError("save_locally must be a boolean")
+        
+        # Validate output format
+        if not isinstance(self.output_format, str):
+            raise ValueError("Output format must be a string")
+        self.output_format = self.output_format.lower()
+        if self.output_format not in {"mp3", "wav", "ogg"}:
+            raise ValueError("Output format must be one of: mp3, wav, ogg") 
