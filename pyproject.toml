@@ -23,6 +23,7 @@ dependencies = [
     "requests>=2.31.0,<3.0.0",
     "youtube-transcript-api>=0.6.1,<0.7.0",
     "html2text>=2020.1.16",
+    "pydub>=0.25.1,<0.26.0",
 ]
 
 [project.scripts]

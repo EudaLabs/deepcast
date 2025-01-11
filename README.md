@@ -11,7 +11,9 @@ deepcast is an AI-powered CLI tool that generates engaging podcast-style convers
 - 🎧 **Interactive Format**: Generates engaging podcast-style conversations between two speakers
 - 📚 **Educational Content**: Creates deep, insightful discussions on any given topic
 - 🗣️ **Text-to-Speech**: Integrates PlayHT for converting conversations into realistic audio
-- 🚀 **Rich File Support**: Generate from TXT, PDF, DOCX, EPUB, Markdown, HTML files
+- 🚀 **Background Music**: Add ambient music with adjustable volume
+- 😊 **Voice Emotions**: Control speaker emotions (happy, serious, excited, etc.)
+- 📄 **Rich File Support**: Generate from TXT, PDF, DOCX, EPUB, Markdown, HTML files
 - 🌐 **Web Content**: Generate from web articles, YouTube transcripts, and URLs
 - 🔄 **Content Combination**: Combine multiple sources into one podcast
 - 🌍 **Multiple Languages**: Support for English, Spanish, French, German, Italian, and Portuguese
@@ -48,12 +50,24 @@ cp .env.example .env
 
 ## 🚀 Usage
 
-### View Available Styles
+### View Available Options
 
-List all available podcast styles:
+List available podcast styles:
 
 ```bash
 deepcast styles
+```
+
+List available background music:
+
+```bash
+deepcast music
+```
+
+List available voice emotions:
+
+```bash
+deepcast emotions
 ```
 
 ### Generate from a Topic
@@ -67,33 +81,26 @@ deepcast generate "Quantum Computing"
 # With custom style
 deepcast generate "Quantum Computing" --style debate
 
-# With complexity level
-deepcast generate "Quantum Computing" --complexity expert
+# With background music
+deepcast generate "Quantum Computing" --music ambient --volume 0.2
 
-# In different language
-deepcast generate "Quantum Computing" --language spanish
-
-# Custom number of exchanges
-deepcast generate "Quantum Computing" --exchanges 7
-
-# Combine options
+# With voice emotions
 deepcast generate "Quantum Computing" \
-    --style educational \
-    --complexity beginner \
-    --language french \
-    --exchanges 5
-
-# View styles
-deepcast styles
+    --speaker1-emotion professional \
+    --speaker2-emotion friendly
 
 # Full customization
-deepcast generate "Advanced Physics" \
+deepcast generate "Quantum Computing" \
     --style educational \
     --complexity expert \
     --language french \
     --exchanges 7 \
-    --file research.pdf \
-    --output transcript.txt
+    --music soft_piano \
+    --volume 0.15 \
+    --speaker1-emotion serious \
+    --speaker2-emotion excited \
+    --save-audio \
+    --format mp3
 ```
 
 ### Generate from Files
@@ -101,17 +108,26 @@ deepcast generate "Advanced Physics" \
 Create a podcast from various file types:
 
 ```bash
-# From a single file
-deepcast generate "Research Paper" --file paper.pdf
+# From a single file with music
+deepcast generate "Research Paper" \
+    --file paper.pdf \
+    --music ambient
 
-# From multiple files
-deepcast generate "Research Summary" --file paper1.pdf --file paper2.pdf
+# From multiple files with emotions
+deepcast generate "Research Summary" \
+    --file paper1.pdf \
+    --file paper2.pdf \
+    --speaker1-emotion professional \
+    --speaker2-emotion friendly
 
-# From different file types
+# From different file types with full audio
 deepcast generate "Documentation" \
     --file intro.md \
     --file chapter1.docx \
-    --file appendix.pdf
+    --file appendix.pdf \
+    --music soft_piano \
+    --volume 0.2 \
+    --save-audio
 ```
 
 ### Generate from Web Content
@@ -119,17 +135,25 @@ deepcast generate "Documentation" \
 Create a podcast from web content:
 
 ```bash
-# From a web article
-deepcast generate "News Article" --url "https://example.com/article"
+# From a web article with music
+deepcast generate "News Article" \
+    --url "https://example.com/article" \
+    --music cinematic
 
-# From a YouTube video
-deepcast generate "Video Summary" --youtube "https://youtube.com/watch?v=..."
+# From a YouTube video with emotions
+deepcast generate "Video Summary" \
+    --youtube "https://youtube.com/watch?v=..." \
+    --speaker1-emotion excited \
+    --speaker2-emotion professional
 
-# Combine web and file content
+# Combine web and file content with full audio
 deepcast generate "Research Review" \
     --file paper.pdf \
-    --url "https://example.com/related-article" \
-    --youtube "https://youtube.com/watch?v=..."
+    --url "https://example.com/article" \
+    --youtube "https://youtube.com/watch?v=..." \
+    --music jazz \
+    --volume 0.1 \
+    --save-audio
 ```
 
 ### Output Options
@@ -146,6 +170,15 @@ Only get the audio URL:
 deepcast generate "Space Exploration" --audio-only
 ```
 
+Save audio locally:
+
+```bash
+deepcast generate "Nature Documentary" \
+    --music nature \
+    --save-audio \
+    --format mp3
+```
+
 ### Full Example
 
 Combine all features:
@@ -160,6 +193,12 @@ deepcast generate "Advanced Physics" \
     --complexity expert \
     --language french \
     --exchanges 7 \
+    --music cinematic \
+    --volume 0.15 \
+    --speaker1-emotion professional \
+    --speaker2-emotion excited \
+    --save-audio \
+    --format mp3 \
     --output transcript.txt
 ```
 
@@ -167,8 +206,8 @@ deepcast generate "Advanced Physics" \
 
 ```
 src/
-├── models/         # Data models (Podcast, Config)
-├── services/       # Core services (LLM, TTS, File, Content)
+├── models/         # Data models (Podcast, Config, Audio)
+├── services/       # Core services (LLM, Audio, File, Content)
 ├── utils/          # Utility functions (Config)
 └── cli.py          # CLI interface
 ```
@@ -200,4 +239,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [OpenRouter](https://openrouter.ai) for providing access to the Deepseek model
 - [FAL.ai](https://fal.ai) for the text-to-speech capabilities
 - [PlayHT](https://play.ht) for voice synthesis
+- [Pixabay](https://pixabay.com) for background music
 - All our contributors and users
