@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, Set
 
 class VoiceEmotion(str, Enum):
     """Voice emotion types."""
@@ -21,6 +21,11 @@ class BackgroundMusicType(str, Enum):
     ELECTRONIC = "electronic"
     NATURE = "nature"
     CINEMATIC = "cinematic"
+
+# Constants for validation
+MAX_TURN_PREFIX_LENGTH = 50
+MAX_SPEAKERS = 5
+ALLOWED_FORMATS = {"mp3", "wav", "ogg"}
 
 # Validate music URLs
 MUSIC_URLS = {
@@ -43,12 +48,24 @@ EMOTION_MODIFIERS = {
     VoiceEmotion.CALM: {"stability": 0.3, "similarity_boost": 0.3}
 }
 
-# Validate voice options
+# Voice configuration
+VOICE_LANGUAGES = {
+    "en-US": "English (US)/American",
+    "en-GB": "English (UK)/British",
+}
+
 AVAILABLE_VOICES = {
     "Jennifer (English (US)/American)",
     "Rachel (English (US)/American)",
     "Dexter (English (US)/American)",
     "Patrick (English (US)/American)"
+}
+
+VOICE_PAIRS = {
+    "Jennifer (English (US)/American)": "Rachel (English (US)/American)",
+    "Rachel (English (US)/American)": "Jennifer (English (US)/American)",
+    "Dexter (English (US)/American)": "Patrick (English (US)/American)",
+    "Patrick (English (US)/American)": "Dexter (English (US)/American)"
 }
 
 @dataclass
@@ -61,21 +78,31 @@ class SpeakerConfig:
 
     def __post_init__(self):
         """Validate speaker configuration."""
+        # Validate voice
         if not isinstance(self.voice, str) or not self.voice.strip():
             raise ValueError("Voice must be a non-empty string")
+        if self.voice not in AVAILABLE_VOICES:
+            raise ValueError(f"Invalid voice: {self.voice}. Must be one of: {', '.join(AVAILABLE_VOICES)}")
         
+        # Validate emotion
         if not isinstance(self.emotion, VoiceEmotion):
             try:
                 self.emotion = VoiceEmotion(self.emotion)
             except ValueError:
-                raise ValueError(f"Invalid emotion: {self.emotion}")
+                raise ValueError(f"Invalid emotion: {self.emotion}. Must be one of: {', '.join(e.value for e in VoiceEmotion)}")
         
+        # Validate turn prefix
         if not isinstance(self.turn_prefix, str):
             raise ValueError("Turn prefix must be a string")
-            
-        if self.fallback_voice is not None:
-            if not isinstance(self.fallback_voice, str) or not self.fallback_voice.strip():
-                raise ValueError("Fallback voice must be a non-empty string")
+        if len(self.turn_prefix) > MAX_TURN_PREFIX_LENGTH:
+            raise ValueError(f"Turn prefix too long (max {MAX_TURN_PREFIX_LENGTH} characters)")
+        
+        # Validate and set fallback voice
+        if self.fallback_voice is None:
+            # Automatically set fallback voice from pairs
+            self.fallback_voice = VOICE_PAIRS.get(self.voice)
+        elif self.fallback_voice not in AVAILABLE_VOICES:
+            raise ValueError(f"Invalid fallback voice: {self.fallback_voice}")
 
 @dataclass
 class AudioConfig:
@@ -88,16 +115,31 @@ class AudioConfig:
     
     def __post_init__(self):
         """Validate configuration."""
-        # Validate speakers
+        # Validate speakers dictionary
         if not isinstance(self.speakers, dict):
             raise ValueError("Speakers must be a dictionary")
         if not self.speakers:
             raise ValueError("At least one speaker must be configured")
+        if len(self.speakers) > MAX_SPEAKERS:
+            raise ValueError(f"Too many speakers (max {MAX_SPEAKERS})")
+            
+        # Validate speaker IDs and configs
+        used_voices: Set[str] = set()
         for speaker_id, config in self.speakers.items():
+            # Validate speaker ID
             if not isinstance(speaker_id, str) or not speaker_id.strip():
                 raise ValueError("Speaker ID must be a non-empty string")
+            if len(speaker_id) > 50:  # Reasonable limit for ID length
+                raise ValueError("Speaker ID too long (max 50 characters)")
+                
+            # Validate speaker config
             if not isinstance(config, SpeakerConfig):
                 raise ValueError(f"Invalid speaker configuration for {speaker_id}")
+                
+            # Check for duplicate voices
+            if config.voice in used_voices:
+                raise ValueError(f"Duplicate voice detected: {config.voice}")
+            used_voices.add(config.voice)
         
         # Validate background music
         if not isinstance(self.background_music, BackgroundMusicType):
@@ -105,7 +147,7 @@ class AudioConfig:
                 self.background_music = BackgroundMusicType(self.background_music)
             except ValueError:
                 raise ValueError(f"Invalid background music type: {self.background_music}")
-        
+            
         # Validate music volume
         if not isinstance(self.music_volume, (int, float)):
             raise ValueError("Music volume must be a number")
@@ -120,5 +162,18 @@ class AudioConfig:
         if not isinstance(self.output_format, str):
             raise ValueError("Output format must be a string")
         self.output_format = self.output_format.lower()
-        if self.output_format not in {"mp3", "wav", "ogg"}:
-            raise ValueError("Output format must be one of: mp3, wav, ogg") 
+        if self.output_format not in ALLOWED_FORMATS:
+            raise ValueError(f"Output format must be one of: {', '.join(ALLOWED_FORMATS)}")
+            
+    def get_voice_language(self, voice: str) -> Optional[str]:
+        """Get the language of a voice."""
+        for lang_code, lang_name in VOICE_LANGUAGES.items():
+            if lang_name in voice:
+                return lang_code
+        return None
+        
+    def validate_voice_compatibility(self) -> bool:
+        """Validate that all voices are compatible (same language)."""
+        languages = {self.get_voice_language(config.voice) 
+                    for config in self.speakers.values()}
+        return len(languages) == 1 and None not in languages 
